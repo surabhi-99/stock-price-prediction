@@ -11,14 +11,6 @@ function TopStocks({ onStockSelect }) {
     ? popularStocks 
     : popularStocks.filter(stock => stock.category === selectedCategory);
 
-  const topStocksByCategory = {
-    'Technology': ['AAPL', 'GOOGL', 'MSFT', 'NVDA'],
-    'Finance': ['JPM', 'BAC', 'V', 'MA'],
-    'Automotive (India)': ['TATAMOTORS.NS'],
-    'IT Services (India)': ['TCS.NS', 'INFY.NS'],
-    'Banking (India)': ['HDFCBANK.NS', 'ICICIBANK.NS']
-  };
-
   return (
     <div className="top-stocks-section">
       <h2>⭐ Popular Stocks to Watch</h2>

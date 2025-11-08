@@ -5,7 +5,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { parseISO } from 'date-fns';
 import './PredictionChart.css';
 
-function PredictionChart({ actual, predicted, dates, isFuture, title, showDateRange, ticker }) {
+function PredictionChart({ actual, predicted, dates, isFuture, title, showDateRange }) {
   const [dateRange, setDateRange] = useState({ start: null, end: null });
   const [filteredData, setFilteredData] = useState([]);
 

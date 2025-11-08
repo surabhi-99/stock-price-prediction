@@ -1,16 +1,14 @@
 import React from 'react';
 import './InvestmentSuggestion.css';
 
-function InvestmentSuggestion({ rmse, predicted, actual, isFuture, ticker }) {
+function InvestmentSuggestion({ rmse, predicted, actual, isFuture }) {
   // Calculate investment suggestion
   const getInvestmentAdvice = () => {
     if (!isFuture && actual && predicted && actual.length > 0 && predicted.length > 0) {
       const recentActual = actual.slice(-10); // Last 10 actual values
-      const recentPredicted = predicted.slice(-10); // Last 10 predicted values
       
       // Calculate trend (rising/falling)
       const actualTrend = recentActual[recentActual.length - 1] - recentActual[0];
-      const predictedTrend = recentPredicted[recentPredicted.length - 1] - recentPredicted[0];
       
       // Calculate accuracy
       const avgAccuracy = 100 - (rmse / (recentActual.reduce((a, b) => a + b, 0) / recentActual.length)) * 100;

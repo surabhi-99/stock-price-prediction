@@ -128,14 +128,13 @@ function App() {
                 predictionData.training_data.dates &&
                 predictionData.training_data.dates.length > 0 ? (
                   <>
-                    <PredictionChart
+                    <PredictionChart 
                       actual={predictionData.training_data.actual}
                       predicted={predictionData.training_data.predicted}
                       dates={predictionData.training_data.dates}
                       isFuture={false}
                       title="Model vs Actual on Training Data"
                       showDateRange={true}
-                      ticker={predictionData.ticker || selectedTicker}
                     />
                     {predictionData.training_data.rmse && (
                       <MetricsDisplay
