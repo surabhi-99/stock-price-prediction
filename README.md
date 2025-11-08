@@ -9,6 +9,9 @@ A full-stack web application for predicting stock prices using LSTM (Long Short-
 - **Multiple Stocks**: Support for any stock ticker from Yahoo Finance
 - **RMSE Metrics**: Evaluate model performance with Root Mean Squared Error
 - **Beautiful UI**: Modern, responsive React interface
+- **Training vs Actual Chart**: See how well the model fits historical data with interactive comparison between actual prices and model predictions over the training period.
+- **Future Prediction Chart**: Visualize the model's forecast for unseen future prices, based on learned data patterns.
+
 
 ## 📋 Prerequisites
 
@@ -66,6 +69,15 @@ The browser will automatically open at http://localhost:3000
 3. **Click "Predict Stock Price"**:
    - Model will train (takes 1-2 minutes)
    - Results will show RMSE metric and chart
+
+4. **Switch Chart View**:
+   - Use the "View Switcher" to toggle between "Training vs Actual" and "Future Prediction" charts.
+   - RMSE accuracy metric is shown alongside the charts for comparison.
+  
+## 📊 Visualizations
+
+- **Training vs Actual Chart**: Interactive line chart comparing real historical prices and model predictions for training data. Lets users evaluate model fit and accuracy.
+- **Future Prediction Chart**: Displays the model's forecast for future prices beyond the training period.
 
 ## 🧪 Testing
 
@@ -179,6 +191,14 @@ Health check endpoint.
 - **Invalid ticker**: Use correct Yahoo Finance ticker format
 - **Insufficient data**: Ensure date range has enough data points
 - **Download errors**: Check internet connection
+
+## ❓ FAQ
+
+**Q: What does the RMSE metric mean?**  
+A: RMSE (Root Mean Squared Error) shows the average difference between your model's predictions and actual prices. Lower is better.
+
+**Q: Can I customize the date range for analysis?**  
+A: Yes! Use the date selector to set your training or prediction window.
 
 ## 📝 License
 
