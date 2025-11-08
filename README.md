@@ -2,6 +2,15 @@
 
 A full-stack web application for predicting stock prices using LSTM (Long Short-Term Memory) neural networks.
 
+## 🌐 Live Demo
+
+| Service | Link |
+|----------|------|
+| **Backend (API)** | [https://stock-price-prediction-api.onrender.com](https://stock-price-prediction-api.onrender.com) |
+| **Frontend (Web App)** | [https://stock-price-prediction-beryl.vercel.app](https://stock-price-prediction-beryl.vercel.app) |
+
+---
+
 ## 🚀 Features
 
 - **Real-time Predictions**: Train and predict stock prices using LSTM models
