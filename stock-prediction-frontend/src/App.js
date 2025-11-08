@@ -7,7 +7,6 @@ import MetricsDisplay from "./components/MetricsDisplay";
 import InvestmentSuggestion from "./components/InvestmentSuggestion";
 import TopStocks from "./components/TopStocks";
 import LearningResources from "./components/LearningResources";
-import { ClipLoader } from "react-spinners";
 
 function App() {
   const [predictionData, setPredictionData] = useState(null);
@@ -64,18 +63,7 @@ function App() {
     }
   };
 
-  return loading ? (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-      }}
-    >
-      <ClipLoader color="#3498db" size={60} />
-    </div>
-  ) : (
+  return (
     <div className="App">
       <header className="App-header">
         <h1>Stock Price Prediction</h1>
