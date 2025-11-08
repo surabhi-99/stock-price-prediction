@@ -22,7 +22,7 @@ function App() {
 
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/predict",
+        "https://stock-price-prediction-api.onrender.com/api/predict",
         formData,
         {
           timeout: 300000, // 5 minutes timeout for model training
@@ -39,7 +39,7 @@ function App() {
         err.message.includes("Network Error")
       ) {
         errorMessage =
-          "Cannot connect to backend. Please make sure Flask server is running on http://localhost:5000";
+          "Cannot connect to backend. Please make sure Flask server is running on https://stock-price-prediction-api.onrender.com/api/predict";
       } else if (err.response) {
         // Server responded with error
         errorMessage =
