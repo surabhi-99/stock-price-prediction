@@ -264,6 +264,11 @@ function PredictionForm({ onSubmit, loading, initialTicker }) {
           <>
             <span className="spinner"></span>
             Training Model... This may take 1-2 minutes
+            {loading && (
+              <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8 }}>
+                (First request may take longer if server is waking up)
+              </div>
+            )}
           </>
         ) : (
           '🚀 Predict Stock Price'
