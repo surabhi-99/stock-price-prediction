@@ -90,7 +90,7 @@ Stock price prediction/
 ├── app.py                          # Flask backend API
 ├── requirements.txt                # Python dependencies
 ├── test_api.py                    # API testing script
-├── Stock_Price_Prediction.ipynb   # Original Jupyter notebook
+├── Stock_Price_Prediction.ipynb   # Jupyter Notebook with LSTM model implementation
 └── stock-prediction-frontend/      # React frontend
     ├── src/
     │   ├── App.js                 # Main app component

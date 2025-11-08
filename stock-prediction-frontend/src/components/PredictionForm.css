@@ -1,14 +1,19 @@
 .prediction-form {
   background: white;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  max-width: 600px;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-width: 700px;
   margin: 0 auto 40px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.prediction-form:hover {
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .form-row {
@@ -18,52 +23,261 @@
 }
 
 .form-group label {
-  display: block;
-  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
   font-weight: 600;
   color: #333;
+  font-size: 14px;
 }
 
-.form-group input {
+.info-tooltip {
+  cursor: help;
+  color: #667eea;
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.info-tooltip:hover {
+  opacity: 1;
+}
+
+/* Ticker Input with Dropdown */
+.ticker-input-wrapper {
+  position: relative;
+}
+
+.ticker-input-wrapper input {
   width: 100%;
-  padding: 12px;
+  padding: 14px 16px;
   border: 2px solid #e0e0e0;
-  border-radius: 5px;
+  border-radius: 8px;
   font-size: 16px;
-  transition: border-color 0.3s;
+  transition: all 0.3s;
+  background: #fff;
 }
 
-.form-group input:focus {
+.ticker-input-wrapper input:focus {
   outline: none;
-  border-color: #4CAF50;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.ticker-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 350px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 2px;
+}
+
+.dropdown-header {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  font-weight: 600;
+  font-size: 12px;
+  color: #666;
+  border-bottom: 1px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.dropdown-item {
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dropdown-item:hover {
+  background: #f8f9ff;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.stock-symbol {
+  font-weight: 700;
+  color: #667eea;
+  font-size: 15px;
+}
+
+.stock-name {
+  color: #333;
+  font-size: 14px;
+}
+
+.stock-category {
+  color: #999;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.dropdown-footer {
+  padding: 10px 16px;
+  background: #f8f9fa;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Date Picker Styling */
+.date-picker-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.date-picker-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* React DatePicker Global Styles */
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker {
+  font-family: inherit;
+  border-radius: 10px;
+  border: 2px solid #e0e0e0;
+}
+
+.react-datepicker__header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px 8px 0 0;
+  border-bottom: none;
+  padding-top: 15px;
+}
+
+.react-datepicker__current-month {
+  color: white;
+  font-weight: 600;
+}
+
+.react-datepicker__day-name {
+  color: white;
+  font-weight: 600;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: #667eea;
+  border-radius: 50%;
+}
+
+.react-datepicker__day:hover {
+  background: rgba(102, 126, 234, 0.2);
+  border-radius: 50%;
+}
+
+.react-datepicker__triangle {
+  display: none;
+}
+
+/* Predict Button */
 .predict-button {
   width: 100%;
-  padding: 15px;
+  padding: 18px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 10px;
   font-size: 18px;
   font-weight: bold;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .predict-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.predict-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .predict-button:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
+}
+
+/* Date Sections */
+.date-section {
+  margin-bottom: 30px;
+  padding: 25px;
+  background: #f8f9ff;
+  border-radius: 12px;
+  border: 2px solid #e8ebff;
+}
+
+.section-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #333;
+  font-weight: 700;
+}
+
+.section-description {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Loading Spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
   .form-row {
     grid-template-columns: 1fr;
   }
+  
+  .prediction-form {
+    padding: 30px 20px;
+  }
+  
+  .ticker-dropdown {
+    max-height: 250px;
+  }
 }
-

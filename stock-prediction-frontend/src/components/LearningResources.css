@@ -1,0 +1,180 @@
+.learning-resources-section {
+  background: white;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin: 30px 0;
+}
+
+.learning-resources-section h2 {
+  margin: 0 0 30px 0;
+  font-size: 28px;
+  color: #333;
+  font-weight: 700;
+  text-align: center;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 30px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 0;
+}
+
+.tab {
+  padding: 12px 30px;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s;
+  margin-bottom: -2px;
+}
+
+.tab:hover {
+  color: #667eea;
+}
+
+.tab.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+.content-intro {
+  text-align: center;
+  color: #666;
+  font-size: 15px;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.resources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.resource-item {
+  padding: 20px;
+  background: #f8f9ff;
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.resource-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.resource-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.resource-type {
+  padding: 4px 12px;
+  background: #667eea;
+  color: white;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.resource-header h4 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.resource-description {
+  color: #666;
+  font-size: 14px;
+  margin: 10px 0;
+  line-height: 1.6;
+}
+
+.resource-link {
+  display: inline-block;
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 10px;
+  transition: transform 0.2s;
+}
+
+.resource-link:hover {
+  transform: translateX(5px);
+  text-decoration: underline;
+}
+
+.precautions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.precaution-card {
+  padding: 25px;
+  background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+  border-radius: 12px;
+  border: 2px solid #ffeaa7;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.precaution-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.2);
+}
+
+.precaution-icon {
+  font-size: 32px;
+  margin-bottom: 15px;
+}
+
+.precaution-card h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #92400e;
+  font-weight: 700;
+}
+
+.precaution-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #92400e;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+  .learning-resources-section {
+    padding: 25px 15px;
+  }
+  
+  .precautions-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tabs {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .tab {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+
+

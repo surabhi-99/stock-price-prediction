@@ -10,55 +10,235 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
+  padding: 20px 0;
 }
 
 .App {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0 20px;
 }
 
 .App-header {
   text-align: center;
-  margin-bottom: 40px;
-  padding: 40px 20px;
+  margin-bottom: 50px;
+  padding: 50px 20px 40px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
 }
 
 .App-header h1 {
-  color: #333;
-  margin-bottom: 10px;
-  font-size: 2.5em;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 15px;
+  font-size: 3em;
+  font-weight: 800;
+  letter-spacing: -1px;
 }
 
 .App-header p {
   color: #666;
-  font-size: 1.2em;
+  font-size: 1.3em;
+  font-weight: 400;
 }
 
 .App-main {
-  margin-top: 20px;
+  margin-top: 30px;
 }
 
 .error-message {
-  background-color: #fee;
+  background: linear-gradient(135deg, #fee 0%, #fdd 100%);
   color: #c33;
-  padding: 15px;
-  border-radius: 5px;
-  margin: 20px auto;
-  max-width: 600px;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 30px auto;
+  max-width: 700px;
   text-align: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px rgba(204, 51, 51, 0.2);
+  border-left: 5px solid #c33;
+}
+
+.error-message pre {
+  margin-top: 10px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  color: white;
+}
+
+.loading-content {
+  text-align: center;
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+  color: #333;
+  max-width: 400px;
+}
+
+.loading-content h3 {
+  margin-bottom: 20px;
+  color: #667eea;
+  font-size: 24px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px;
+  animation: progress-animation 2s ease-in-out infinite;
+}
+
+@keyframes progress-animation {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+.loading-steps {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.loading-steps li {
+  margin: 10px 0;
+  padding-left: 25px;
+  position: relative;
+  color: #666;
+}
+
+.loading-steps li::before {
+  content: "⏳";
+  position: absolute;
+  left: 0;
+}
+
+.loading-steps li.active {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.loading-steps li.active::before {
+  content: "🔄";
+}
+
+.loading-steps li.complete {
+  color: #10b981;
+}
+
+.loading-steps li.complete::before {
+  content: "✅";
+}
+
+.future-note {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  padding: 20px;
+  border-radius: 12px;
+  margin: 20px auto;
+  max-width: 700px;
+  text-align: center;
+  border-left: 5px solid #f59e0b;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);
+}
+
+.future-note p {
+  margin: 0;
+  color: #92400e;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.view-switcher {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin: 30px 0;
+  flex-wrap: wrap;
+}
+
+.view-button {
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.1);
+}
+
+.view-button:hover {
+  background: #f0f4ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.view-button.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
 }
 
 @media (max-width: 768px) {
   .App-header h1 {
-    font-size: 2em;
+    font-size: 2.2em;
+  }
+  
+  .App-header p {
+    font-size: 1.1em;
   }
   
   .App {
-    padding: 10px;
+    padding: 0 10px;
+  }
+
+  .loading-content {
+    margin: 20px;
+    padding: 30px 20px;
+  }
+
+  .view-switcher {
+    gap: 10px;
+  }
+
+  .view-button {
+    padding: 12px 20px;
+    font-size: 14px;
   }
 }
 

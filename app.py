@@ -97,46 +97,131 @@ def predict():
     try:
         data = request.json
         ticker = data.get('ticker', 'TATAMOTORS.NS')
-        start_date = data.get('start_date', '2010-01-01')
-        end_date = data.get('end_date', '2023-05-31')
+        train_start_date = data.get('train_start_date', None)
+        train_end_date = data.get('train_end_date', None)
+        predict_start_date = data.get('predict_start_date', None)
+        predict_end_date = data.get('predict_end_date', None)
         
-        # Train model
-        model, scaler = train_model(ticker, start_date, end_date)
+        # Fallback for old API format
+        if not train_start_date:
+            train_start_date = data.get('start_date', '2010-01-01')
+            train_end_date = data.get('end_date', '2023-05-31')
+            predict_start_date = train_end_date
+            predict_end_date = train_end_date
+            is_future_prediction = False
+        else:
+            is_future_prediction = True
         
-        # Download data for prediction
-        stock_data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        # Train model on historical data
+        model, scaler = train_model(ticker, train_start_date, train_end_date)
+        
+        # Always calculate training data predictions for comparison
+        stock_data = yf.download(ticker, start=train_start_date, end=train_end_date, progress=False)
         prices = stock_data['Close'].values.reshape(-1, 1)
         scaled_prices = scaler.transform(prices)
         
-        # Prepare test data - use the same scaler and split as training
+        # Prepare training data for predictions
         train_size = int(len(scaled_prices) * 0.8)
-        test_data = scaled_prices[train_size:]
+        train_data = scaled_prices[:train_size]
         time_steps = 30
         
-        # Ensure we have enough data points
-        if len(test_data) < time_steps + 1:
-            return jsonify({'error': f'Not enough test data. Need at least {time_steps + 1} data points, got {len(test_data)}'}), 400
+        # Get predictions on training data
+        X_train_pred, y_train_actual = prepare_data(train_data, time_steps)
+        if len(X_train_pred) > 0:
+            train_predictions = model.predict(X_train_pred, verbose=0)
+            train_predictions = scaler.inverse_transform(train_predictions)
+            train_actual = scaler.inverse_transform(y_train_actual)
+            train_dates = stock_data.index[time_steps:train_size + time_steps]
+            
+            # Calculate training RMSE
+            train_mse = np.mean((train_predictions - train_actual) ** 2)
+            train_rmse = np.sqrt(train_mse)
+        else:
+            train_predictions = []
+            train_actual = []
+            train_dates = []
+            train_rmse = None
         
-        X_test, y_test = prepare_data(test_data, time_steps)
-        
-        # Make predictions (X_test should now have correct shape from prepare_data)
-        predicted = model.predict(X_test, verbose=0)
-        predicted = scaler.inverse_transform(predicted)
-        actual = scaler.inverse_transform(y_test)
-        
-        # Calculate metrics
-        mse = np.mean((predicted - actual) ** 2)
-        rmse = np.sqrt(mse)
-        
-        # Prepare response - get dates corresponding to test predictions
-        test_dates = stock_data.index[train_size + time_steps:]
-        
-        response = {
-            'actual': actual.flatten().tolist(),
-            'predicted': predicted.flatten().tolist(),
-            'rmse': float(rmse),
-            'dates': test_dates.strftime('%Y-%m-%d').tolist()
-        }
+        if is_future_prediction:
+            # For future predictions: use last part of training data to predict future
+            # Use the last 'time_steps' days to predict future
+            last_sequence = scaled_prices[-time_steps:].reshape(1, time_steps, 1)
+            
+            # Generate predictions for future dates
+            from datetime import datetime, timedelta
+            import pandas as pd
+            
+            predict_dates = pd.date_range(start=predict_start_date, end=predict_end_date, freq='B')  # Business days
+            predicted_future = []
+            
+            # Start with last sequence from training data
+            current_sequence = last_sequence.copy()
+            
+            for i in range(len(predict_dates)):
+                # Predict next price
+                next_pred = model.predict(current_sequence, verbose=0)
+                predicted_future.append(next_pred[0, 0])
+                
+                # Update sequence: remove first, add prediction
+                current_sequence = np.append(current_sequence[0, 1:, :], next_pred).reshape(1, time_steps, 1)
+            
+            # Inverse transform predictions
+            predicted = scaler.inverse_transform(np.array(predicted_future).reshape(-1, 1))
+            
+            # For future predictions, we don't have actual values yet
+            actual = None
+            rmse = None
+            
+            response = {
+                'predicted': predicted.flatten().tolist(),
+                'dates': predict_dates.strftime('%Y-%m-%d').tolist(),
+                'is_future': True,
+                'ticker': ticker,
+                'training_data': {
+                    'predicted': train_predictions.flatten().tolist() if len(train_predictions) > 0 else [],
+                    'actual': train_actual.flatten().tolist() if len(train_actual) > 0 else [],
+                    'dates': train_dates.strftime('%Y-%m-%d').tolist() if len(train_dates) > 0 else [],
+                    'rmse': float(train_rmse) if train_rmse is not None else None
+                }
+            }
+            
+        else:
+            # Original behavior: predict on test set from historical data
+            # Prepare test data - use the same scaler and split as training
+            test_data = scaled_prices[train_size:]
+            time_steps = 30
+            
+            # Ensure we have enough data points
+            if len(test_data) < time_steps + 1:
+                return jsonify({'error': f'Not enough test data. Need at least {time_steps + 1} data points, got {len(test_data)}'}), 400
+            
+            X_test, y_test = prepare_data(test_data, time_steps)
+            
+            # Make predictions (X_test should now have correct shape from prepare_data)
+            predicted = model.predict(X_test, verbose=0)
+            predicted = scaler.inverse_transform(predicted)
+            actual = scaler.inverse_transform(y_test)
+            
+            # Calculate metrics
+            mse = np.mean((predicted - actual) ** 2)
+            rmse = np.sqrt(mse)
+            
+            # Prepare response - get dates corresponding to test predictions
+            test_dates = stock_data.index[train_size + time_steps:]
+            
+            response = {
+                'actual': actual.flatten().tolist(),
+                'predicted': predicted.flatten().tolist(),
+                'rmse': float(rmse),
+                'dates': test_dates.strftime('%Y-%m-%d').tolist(),
+                'is_future': False,
+                'training_data': {
+                    'predicted': train_predictions.flatten().tolist() if len(train_predictions) > 0 else [],
+                    'actual': train_actual.flatten().tolist() if len(train_actual) > 0 else [],
+                    'dates': train_dates.strftime('%Y-%m-%d').tolist() if len(train_dates) > 0 else [],
+                    'rmse': float(train_rmse) if train_rmse is not None else None
+                }
+            }
         
         return jsonify(response)
     
