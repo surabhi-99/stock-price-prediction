@@ -12,13 +12,7 @@ warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 # Enable CORS for all routes, allowing requests from localhost:3000, 127.0.0.1:3000, and production
-CORS(app, resources={r"/api/*": {
-    "origins": [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://stock-price-prediction-beryl.vercel.app"
-    ]
-}})
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Global variables
 model = None
