@@ -11,26 +11,18 @@ import warnings
 warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
-# Allow all origins for CORS with proper headers - more permissive for local development
-CORS(app, 
-     resources={r"/*": {"origins": "*"}},  # Allow all routes, not just /api/*
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-     methods=["GET", "POST", "OPTIONS", "PUT", "DELETE", "HEAD"],
-     expose_headers=["Content-Type", "Authorization"])
+# Enable CORS for all routes, allowing requests from localhost:3000, 127.0.0.1:3000, and production
+CORS(app, resources={r"/api/*": {
+    "origins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://stock-price-prediction-beryl.vercel.app"
+    ]
+}})
 
 # Global variables
 model = None
 scaler = MinMaxScaler(feature_range=(0, 1))
-
-# Add CORS headers to all responses
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE, HEAD')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
 
 def prepare_data(data, time_steps):
     X, y = [], []
@@ -107,15 +99,8 @@ def train_model(ticker, start_date, end_date):
     
     return model, scaler
 
-@app.route('/api/predict', methods=['POST', 'OPTIONS'])
+@app.route('/api/predict', methods=['POST'])
 def predict():
-    # Handle CORS preflight request
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        return response
     try:
         data = request.json
         ticker = data.get('ticker', 'TATAMOTORS.NS')
@@ -264,17 +249,9 @@ def predict():
             'details': error_details.split('\n')[-5:] if len(error_details) > 100 else error_details
         }), 500
 
-@app.route('/api/health', methods=['GET', 'OPTIONS'])
+@app.route('/api/health', methods=['GET'])
 def health():
-    # Handle CORS preflight request
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        return response
     return jsonify({'status': 'ok', 'message': 'Backend is running'})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-

@@ -4,7 +4,6 @@ import "./App.css";
 import PredictionForm from "./components/PredictionForm";
 import PredictionChart from "./components/PredictionChart";
 import MetricsDisplay from "./components/MetricsDisplay";
-import InvestmentSuggestion from "./components/InvestmentSuggestion";
 import TopStocks from "./components/TopStocks";
 import LearningResources from "./components/LearningResources";
 
@@ -14,47 +13,6 @@ function App() {
   const [error, setError] = useState(null);
   const [selectedTicker, setSelectedTicker] = useState(null);
   const [activeView, setActiveView] = useState("future"); // 'future' or 'training'
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState(null);
-
-  // Test backend connection
-  const testBackendConnection = async () => {
-    setTestingConnection(true);
-    setConnectionStatus(null);
-    setError(null);
-
-    const API_BASE_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
-    
-    try {
-      console.log("Testing connection to:", `${API_BASE_URL}/api/health`);
-      const response = await axios.get(`${API_BASE_URL}/api/health`, {
-        timeout: 20000,
-      });
-      setConnectionStatus({
-        success: true,
-        message: `✅ Backend is reachable! Status: ${response.status}`,
-        data: response.data,
-      });
-      console.log("Connection test successful:", response.data);
-    } catch (err) {
-      const errorMsg = err.response 
-        ? `Backend responded with status ${err.response.status}: ${err.response.statusText}`
-        : err.code === "ECONNABORTED" || err.message.includes("timeout")
-        ? "Request timed out - server might be starting up (wait 30-60 seconds)"
-        : err.code === "ERR_NETWORK" || err.message.includes("Network Error")
-        ? "Network error - cannot reach backend server"
-        : `Error: ${err.message || err.code || "Unknown error"}`;
-      
-      setConnectionStatus({
-        success: false,
-        message: `❌ Connection failed: ${errorMsg}`,
-        error: err,
-      });
-      console.error("Connection test failed:", err);
-    } finally {
-      setTestingConnection(false);
-    }
-  };
 
   const handlePredict = async (formData) => {
     setLoading(true);
@@ -199,14 +157,13 @@ function App() {
               "• Backend URL might be incorrect\n\n") +
           `🔍 Debug Info:\n${errorDetails.join('\n')}\n\n` +
           "💡 Solutions:\n" +
-          "1. Click 'Test Backend Connection' button above to verify connectivity\n" +
-          "2. Verify the backend is running at: " + API_BASE_URL + "\n" +
-          "3. Check browser console (F12) for detailed error messages\n" +
-          "4. Try accessing the health endpoint directly in browser: " + API_BASE_URL + "/api/health\n" +
+          "1. Verify the backend is running at: " + API_BASE_URL + "\n" +
+          "2. Check browser console (F12) for detailed error messages\n" +
+          "3. Try accessing the health endpoint directly in browser: " + API_BASE_URL + "/api/health\n" +
           (isCorsError
-            ? "5. Backend needs to allow CORS from your Vercel domain\n"
-            : "5. Wait 30-60 seconds if using Render free tier (cold start)\n") +
-          "6. Check your internet connection";
+            ? "4. Backend needs to allow CORS from your Vercel domain\n"
+            : "4. Wait 30-60 seconds if using Render free tier (cold start)\n") +
+          "5. Check your internet connection";
       } else if (err.response) {
         // Server responded with error
         const status = err.response.status;
@@ -269,48 +226,6 @@ function App() {
       </header>
 
       <main className="App-main">
-        <div className="connection-test-section" style={{ marginBottom: '20px', textAlign: 'center' }}>
-          <button 
-            onClick={testBackendConnection} 
-            disabled={testingConnection}
-            className="test-connection-btn"
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#667eea',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: testingConnection ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              opacity: testingConnection ? 0.6 : 1,
-            }}
-          >
-            {testingConnection ? '⏳ Testing Connection...' : '🔍 Test Backend Connection'}
-          </button>
-          {connectionStatus && (
-            <div 
-              className="connection-status"
-              style={{
-                padding: '15px',
-                marginTop: '15px',
-                borderRadius: '8px',
-                backgroundColor: connectionStatus.success ? '#d1fae5' : '#fee2e2',
-                color: connectionStatus.success ? '#065f46' : '#991b1b',
-                border: `2px solid ${connectionStatus.success ? '#10b981' : '#ef4444'}`,
-                textAlign: 'left',
-              }}
-            >
-              <p style={{ margin: 0, fontWeight: '600' }}>{connectionStatus.message}</p>
-              {connectionStatus.data && (
-                <pre style={{ marginTop: '10px', fontSize: '12px', overflow: 'auto', backgroundColor: 'rgba(0,0,0,0.05)', padding: '10px', borderRadius: '4px' }}>
-                  {JSON.stringify(connectionStatus.data, null, 2)}
-                </pre>
-              )}
-            </div>
-          )}
-        </div>
-        
         <TopStocks onStockSelect={(stock) => setSelectedTicker(stock.symbol)} />
         <PredictionForm
           onSubmit={handlePredict}
@@ -397,22 +312,6 @@ function App() {
                 />
                 {!predictionData.is_future && predictionData.rmse && (
                   <MetricsDisplay rmse={predictionData.rmse} />
-                )}
-                <InvestmentSuggestion
-                  rmse={predictionData.rmse}
-                  predicted={predictionData.predicted}
-                  actual={predictionData.actual}
-                  isFuture={predictionData.is_future}
-                  ticker={predictionData.ticker || selectedTicker}
-                />
-                {predictionData.is_future && (
-                  <div className="future-note">
-                    <p>
-                      <strong>📈 Future Prediction:</strong> These are
-                      forecasted prices based on the model's learning from
-                      historical data. Actual future prices may vary.
-                    </p>
-                  </div>
                 )}
               </>
             )}
