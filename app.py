@@ -12,7 +12,10 @@ warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 # Enable CORS for all routes, allowing requests from localhost:3000, 127.0.0.1:3000, and production
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+
+CORS(app, resources={r"/api/*": {"origins": [frontend_url, "http://127.0.0.1:3000"]}})
 
 # Global variables
 model = None
