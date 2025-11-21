@@ -13,12 +13,25 @@ warnings.filterwarnings('ignore')
 app = Flask(__name__)
 # Enable CORS for all routes, allowing all origins and all HTTP methods
 
+# Allowed origins including deployed frontend
+allowed_origins = [
+    os.getenv("FRONTEND_URL"),
+    "http://localhost:3000",
+    "https://stock-price-prediction-beryl.vercel.app",
+]
 
-CORS(app, resources={r"/api/*": {
-    "origins": [os.getenv("FRONTEND_URL"), "http://localhost:3000"],
-    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
-    "allow_headers": "*"
-}})
+# Filter out None values (in case FRONTEND_URL is not set)
+allowed_origins = [origin for origin in allowed_origins if origin]
+
+# Enable CORS for all routes with proper configuration
+CORS(app, 
+     resources={r"/*": {
+         "origins": allowed_origins,
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+         "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+         "supports_credentials": True
+     }}
+)
 
 # Global variables
 model = None
