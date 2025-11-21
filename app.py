@@ -11,7 +11,6 @@ import warnings
 warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
-# Enable CORS for all routes, allowing all origins and all HTTP methods
 
 # Allowed origins including deployed frontend
 allowed_origins = [
@@ -24,13 +23,23 @@ allowed_origins = [
 allowed_origins = [origin for origin in allowed_origins if origin]
 
 # Enable CORS for all routes with proper configuration
+# Using both global and per-resource configuration for maximum compatibility
 CORS(app, 
-     resources={r"/*": {
-         "origins": allowed_origins,
-         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
-         "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
-         "supports_credentials": True
-     }}
+     resources={
+         r"/*": {
+             "origins": allowed_origins,
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+             "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+             "expose_headers": ["Content-Type"],
+             "supports_credentials": True,  # Can use True with specific origins (not wildcard)
+             "max_age": 3600
+         }
+     },
+     # Global CORS settings as fallback
+     origins=allowed_origins,
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+     supports_credentials=True
 )
 
 # Global variables
@@ -112,8 +121,12 @@ def train_model(ticker, start_date, end_date):
     
     return model, scaler
 
-@app.route('/api/predict', methods=['POST'])
+@app.route('/api/predict', methods=['POST', 'OPTIONS'])
 def predict():
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        return response
     try:
         data = request.json
         ticker = data.get('ticker', 'TATAMOTORS.NS')
