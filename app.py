@@ -4,8 +4,9 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.models import load_model
+import pickle
+from datetime import datetime, timedelta
 import os
 import warnings
 warnings.filterwarnings('ignore')
@@ -42,9 +43,11 @@ CORS(app,
      supports_credentials=True
 )
 
-# Global variables
-model = None
-scaler = MinMaxScaler(feature_range=(0, 1))
+# Directory where trained models are stored
+MODELS_DIR = 'models'
+
+# Cache for loaded models (to avoid reloading on every request)
+models_cache = {}
 
 def prepare_data(data, time_steps):
     X, y = [], []
@@ -71,55 +74,53 @@ def prepare_data(data, time_steps):
     
     return X, y
 
-def train_model(ticker, start_date, end_date):
-    global model, scaler
+def load_trained_model(ticker):
+    """
+    Load a trained model from disk.
     
-    # Download data
+    Args:
+        ticker: Stock ticker symbol
+    
+    Returns:
+        tuple: (model, scaler, metadata) or None if not found
+    """
+    # Check cache first
+    if ticker in models_cache:
+        return models_cache[ticker]
+    
+    # Sanitize ticker for filename
+    safe_ticker = ticker.replace('.', '_')
+    
+    # Construct file paths
+    model_path = os.path.join(MODELS_DIR, f'{safe_ticker}_model.h5')
+    scaler_path = os.path.join(MODELS_DIR, f'{safe_ticker}_scaler.pkl')
+    metadata_path = os.path.join(MODELS_DIR, f'{safe_ticker}_metadata.pkl')
+    
+    # Check if files exist
+    if not os.path.exists(model_path) or not os.path.exists(scaler_path):
+        return None
+    
     try:
-        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        # Load model
+        model = load_model(model_path)
+        
+        # Load scaler
+        with open(scaler_path, 'rb') as f:
+            scaler = pickle.load(f)
+        
+        # Load metadata if available
+        metadata = None
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'rb') as f:
+                metadata = pickle.load(f)
+        
+        # Cache the loaded model
+        models_cache[ticker] = (model, scaler, metadata)
+        
+        return model, scaler, metadata
     except Exception as e:
-        raise Exception(f"Failed to download data for {ticker}: {str(e)}")
-    
-    # Check if data is empty
-    if data.empty:
-        raise Exception(f"No data found for ticker {ticker}. Please check the ticker symbol and date range.")
-    
-    # Check if Close column exists
-    if 'Close' not in data.columns:
-        raise Exception(f"No 'Close' price data found for {ticker}")
-    
-    prices = data['Close'].values.reshape(-1, 1)
-    
-    # Check for sufficient data
-    if len(prices) < 100:
-        raise Exception(f"Insufficient data for {ticker}. Got {len(prices)} data points, need at least 100.")
-    
-    # Normalize
-    scaled_prices = scaler.fit_transform(prices)
-    
-    # Split
-    train_size = int(len(scaled_prices) * 0.8)
-    train_data = scaled_prices[:train_size]
-    
-    # Prepare training data
-    time_steps = 30
-    X_train, y_train = prepare_data(train_data, time_steps)
-    
-    # Check if we have enough training data
-    if len(X_train) == 0:
-        raise Exception(f"Not enough training data after preparing sequences. Need more than {time_steps} data points.")
-    
-    # Build model
-    model = Sequential()
-    model.add(LSTM(units=50, return_sequences=True, input_shape=(time_steps, 1)))
-    model.add(LSTM(units=50))
-    model.add(Dense(units=1))
-    model.compile(optimizer='adam', loss='mean_squared_error')
-    
-    # Train
-    model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=0)
-    
-    return model, scaler
+        print(f"Error loading model for {ticker}: {str(e)}")
+        return None
 
 @app.route('/api/predict', methods=['POST', 'OPTIONS'])
 def predict():
@@ -145,18 +146,45 @@ def predict():
         else:
             is_future_prediction = True
         
-        # Train model on historical data
-        model, scaler = train_model(ticker, train_start_date, train_end_date)
+        # Load trained model from file
+        model_data = load_trained_model(ticker)
+        if model_data is None:
+            return jsonify({
+                'error': f'No trained model found for ticker {ticker}. Please run train_models.py first to train models.'
+            }), 404
         
-        # Always calculate training data predictions for comparison
-        stock_data = yf.download(ticker, start=train_start_date, end=train_end_date, progress=False)
+        model, scaler, metadata = model_data
+        
+        # Download stock data for predictions
+        # Use the date range from metadata if available, otherwise use requested dates
+        if metadata and 'date_range' in metadata:
+            data_start = metadata['date_range']['start']
+            data_end = metadata['date_range']['end']
+        else:
+            data_start = train_start_date
+            data_end = train_end_date
+        
+        stock_data = yf.download(ticker, start=data_start, end=data_end, progress=False)
+        
+        # Check if data is empty
+        if stock_data.empty:
+            return jsonify({
+                'error': f'No data found for ticker {ticker} in the specified date range.'
+            }), 400
+        
         prices = stock_data['Close'].values.reshape(-1, 1)
         scaled_prices = scaler.transform(prices)
         
-        # Prepare training data for predictions
-        train_size = int(len(scaled_prices) * 0.8)
-        train_data = scaled_prices[:train_size]
-        time_steps = 30
+        # Get time_steps from metadata or use default
+        time_steps = metadata.get('time_steps', 30) if metadata else 30
+        
+        # For predictions, use all available data (model was trained on all data)
+        all_data = scaled_prices
+        
+        # Get predictions on available data for comparison
+        # Use a portion of the data for evaluation (last 20% for test, rest for training visualization)
+        eval_size = int(len(all_data) * 0.2)
+        train_data = all_data[:-eval_size] if eval_size > 0 else all_data
         
         # Get predictions on training data
         X_train_pred, y_train_actual = prepare_data(train_data, time_steps)
@@ -164,7 +192,7 @@ def predict():
             train_predictions = model.predict(X_train_pred, verbose=0)
             train_predictions = scaler.inverse_transform(train_predictions)
             train_actual = scaler.inverse_transform(y_train_actual)
-            train_dates = stock_data.index[time_steps:train_size + time_steps]
+            train_dates = stock_data.index[time_steps:len(train_data) + time_steps]
             
             # Calculate training RMSE
             train_mse = np.mean((train_predictions - train_actual) ** 2)
@@ -176,13 +204,11 @@ def predict():
             train_rmse = None
         
         if is_future_prediction:
-            # For future predictions: use last part of training data to predict future
+            # For future predictions: use last part of available data to predict future
             # Use the last 'time_steps' days to predict future
-            last_sequence = scaled_prices[-time_steps:].reshape(1, time_steps, 1)
+            last_sequence = all_data[-time_steps:].reshape(1, time_steps, 1)
             
             # Generate predictions for future dates
-            from datetime import datetime, timedelta
-            import pandas as pd
             
             predict_dates = pd.date_range(start=predict_start_date, end=predict_end_date, freq='B')  # Business days
             predicted_future = []
@@ -220,9 +246,12 @@ def predict():
             
         else:
             # Original behavior: predict on test set from historical data
-            # Prepare test data - use the same scaler and split as training
-            test_data = scaled_prices[train_size:]
-            time_steps = 30
+            # Use the last portion of data as test set
+            eval_size = int(len(all_data) * 0.2)
+            if eval_size == 0:
+                eval_size = min(50, len(all_data) - time_steps - 1)
+            
+            test_data = all_data[-eval_size:] if eval_size > 0 else all_data
             
             # Ensure we have enough data points
             if len(test_data) < time_steps + 1:
@@ -240,7 +269,8 @@ def predict():
             rmse = np.sqrt(mse)
             
             # Prepare response - get dates corresponding to test predictions
-            test_dates = stock_data.index[train_size + time_steps:]
+            test_start_idx = len(all_data) - len(test_data) + time_steps
+            test_dates = stock_data.index[test_start_idx:]
             
             response = {
                 'actual': actual.flatten().tolist(),
@@ -277,7 +307,18 @@ def predict():
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok', 'message': 'Backend is running'})
+    # Count available models
+    model_count = 0
+    if os.path.exists(MODELS_DIR):
+        model_files = [f for f in os.listdir(MODELS_DIR) if f.endswith('_model.h5')]
+        model_count = len(model_files)
+    
+    return jsonify({
+        'status': 'ok', 
+        'message': 'Backend is running',
+        'cached_models': len(models_cache),
+        'available_models': model_count
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
