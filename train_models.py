@@ -1,27 +1,29 @@
 """
-Script to train and save LSTM models for stock price prediction.
-Run this script before using the prediction API.
+Training script for stock price prediction models.
+Trains models on all available historical data and saves them to files.
 """
-
 import yfinance as yf
 import numpy as np
-import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 import pickle
 import os
-from datetime import datetime
 import warnings
+from datetime import datetime
 warnings.filterwarnings('ignore')
 
-# Directory where trained models will be stored
-MODELS_DIR = 'models'
+# Popular tickers to train
+POPULAR_TICKERS = [
+    'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'META', 'TSLA', 'NVDA', 'NFLX',
+    'JPM', 'BAC', 'GS', 'WMT', 'PG', 'KO',
+    'TATAMOTORS.NS', 'RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS',
+    'ICICIBANK.NS', 'SBIN.NS', 'BHARTIARTL.NS',
+    'JNJ', 'V', 'MA', 'DIS', 'VZ'
+]
 
-# Create models directory if it doesn't exist
-if not os.path.exists(MODELS_DIR):
-    os.makedirs(MODELS_DIR)
-    print(f"Created directory: {MODELS_DIR}")
+# Directory to store trained models
+MODELS_DIR = 'models'
 
 def prepare_data(data, time_steps):
     """Prepare data for LSTM training."""
@@ -49,70 +51,85 @@ def prepare_data(data, time_steps):
     
     return X, y
 
-def train_and_save_model(ticker, start_date='2010-01-01', end_date='2023-05-31', time_steps=30):
+def train_model(ticker, start_date=None, end_date=None):
     """
-    Train an LSTM model for a given ticker and save it to disk.
+    Train a model for a specific ticker using all available data.
     
     Args:
         ticker: Stock ticker symbol
-        start_date: Start date for training data
-        end_date: End date for training data
-        time_steps: Number of time steps for LSTM input
+        start_date: Optional start date (if None, uses all available data)
+        end_date: Optional end date (if None, uses current date)
+    
+    Returns:
+        tuple: (model, scaler, metadata)
     """
-    print(f"\n{'='*60}")
-    print(f"Training model for {ticker}")
-    print(f"{'='*60}")
+    print(f"\nTraining model for {ticker}...")
     
-    # Sanitize ticker for filename
-    safe_ticker = ticker.replace('.', '_')
-    
-    # Download data
+    # Download data - use Ticker object for cleaner data access
     try:
-        print(f"Downloading data from {start_date} to {end_date}...")
-        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        ticker_obj = yf.Ticker(ticker)
+        
+        if start_date and end_date:
+            # Use history method for date range
+            data = ticker_obj.history(start=start_date, end=end_date)
+        else:
+            # Download maximum available historical data
+            from datetime import datetime, timedelta
+            end_date_obj = datetime.now()
+            start_date_obj = end_date_obj - timedelta(days=3650)  # 10 years
+            
+            # Try to get maximum available data using history method
+            # First try 10-year period
+            data = ticker_obj.history(period="10y")
+            
+            # If that didn't work well, try explicit date range
+            if data.empty or len(data) < 100:
+                data = ticker_obj.history(start=start_date_obj.strftime('%Y-%m-%d'), 
+                                        end=end_date_obj.strftime('%Y-%m-%d'))
+            
+            # If still not enough, try max period
+            if data.empty or len(data) < 100:
+                data = ticker_obj.history(period="max")
     except Exception as e:
-        print(f"Error downloading data for {ticker}: {str(e)}")
-        return False
+        raise Exception(f"Failed to download data for {ticker}: {str(e)}")
     
     # Check if data is empty
     if data.empty:
-        print(f"No data found for ticker {ticker}")
-        return False
+        raise Exception(f"No data found for ticker {ticker}")
     
+    # Ticker.history() returns a DataFrame with standard columns: Open, High, Low, Close, Volume, etc.
     # Check if Close column exists
     if 'Close' not in data.columns:
-        print(f"No 'Close' price data found for {ticker}")
-        return False
+        raise Exception(f"No 'Close' price data found for {ticker}. Available columns: {list(data.columns)}")
     
+    # Get Close prices
     prices = data['Close'].values.reshape(-1, 1)
     
     # Check for sufficient data
     if len(prices) < 100:
-        print(f"Insufficient data for {ticker}. Got {len(prices)} data points, need at least 100.")
-        return False
+        raise Exception(f"Insufficient data for {ticker}. Got {len(prices)} data points, need at least 100. "
+                       f"Date range: {data.index[0].strftime('%Y-%m-%d')} to {data.index[-1].strftime('%Y-%m-%d')}")
     
-    print(f"Downloaded {len(prices)} data points")
+    print(f"  Downloaded {len(prices)} data points")
+    print(f"  Date range: {data.index[0].strftime('%Y-%m-%d')} to {data.index[-1].strftime('%Y-%m-%d')}")
     
-    # Normalize
+    # Create scaler
     scaler = MinMaxScaler(feature_range=(0, 1))
+    
+    # Normalize - use ALL data for fitting (no train/test split for training)
     scaled_prices = scaler.fit_transform(prices)
     
-    # Use all data for training (no split for production models)
-    train_data = scaled_prices
-    
-    # Prepare training data
-    print("Preparing training sequences...")
-    X_train, y_train = prepare_data(train_data, time_steps)
+    # Prepare training data - use all available data
+    time_steps = 30
+    X_train, y_train = prepare_data(scaled_prices, time_steps)
     
     # Check if we have enough training data
     if len(X_train) == 0:
-        print(f"Not enough training data after preparing sequences. Need more than {time_steps} data points.")
-        return False
+        raise Exception(f"Not enough training data after preparing sequences. Need more than {time_steps} data points.")
     
-    print(f"Prepared {len(X_train)} training sequences")
+    print(f"  Prepared {len(X_train)} training sequences")
     
     # Build model
-    print("Building LSTM model...")
     model = Sequential()
     model.add(LSTM(units=50, return_sequences=True, input_shape=(time_steps, 1)))
     model.add(LSTM(units=50))
@@ -120,78 +137,84 @@ def train_and_save_model(ticker, start_date='2010-01-01', end_date='2023-05-31',
     model.compile(optimizer='adam', loss='mean_squared_error')
     
     # Train
-    print("Training model (this may take a while)...")
-    model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=1)
+    print(f"  Training model...")
+    model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=0)
     
-    # Save model
+    # Create metadata
+    metadata = {
+        'ticker': ticker,
+        'data_points': len(prices),
+        'training_sequences': len(X_train),
+        'date_range': {
+            'start': data.index[0].strftime('%Y-%m-%d'),
+            'end': data.index[-1].strftime('%Y-%m-%d')
+        },
+        'trained_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'time_steps': time_steps
+    }
+    
+    print(f"  ✓ Model trained successfully")
+    
+    return model, scaler, metadata
+
+def save_model(ticker, model, scaler, metadata):
+    """Save model, scaler, and metadata to files."""
+    # Create models directory if it doesn't exist
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    
+    # Sanitize ticker for filename (replace . with _)
+    safe_ticker = ticker.replace('.', '_')
+    
+    # Save Keras model
     model_path = os.path.join(MODELS_DIR, f'{safe_ticker}_model.h5')
-    scaler_path = os.path.join(MODELS_DIR, f'{safe_ticker}_scaler.pkl')
-    metadata_path = os.path.join(MODELS_DIR, f'{safe_ticker}_metadata.pkl')
-    
-    print(f"Saving model to {model_path}...")
     model.save(model_path)
     
-    print(f"Saving scaler to {scaler_path}...")
+    # Save scaler using pickle
+    scaler_path = os.path.join(MODELS_DIR, f'{safe_ticker}_scaler.pkl')
     with open(scaler_path, 'wb') as f:
         pickle.dump(scaler, f)
     
-    # Save metadata
-    metadata = {
-        'ticker': ticker,
-        'time_steps': time_steps,
-        'date_range': {
-            'start': start_date,
-            'end': end_date
-        },
-        'training_samples': len(X_train),
-        'trained_date': datetime.now().isoformat()
-    }
-    
-    print(f"Saving metadata to {metadata_path}...")
+    # Save metadata using pickle
+    metadata_path = os.path.join(MODELS_DIR, f'{safe_ticker}_metadata.pkl')
     with open(metadata_path, 'wb') as f:
         pickle.dump(metadata, f)
     
-    print(f"✓ Successfully trained and saved model for {ticker}")
-    return True
+    print(f"  ✓ Saved model files to {MODELS_DIR}/")
 
-if __name__ == '__main__':
-    # List of common tickers to train
-    # You can modify this list to include the tickers you want to support
-    tickers = [
-        'AAPL',      # Apple
-        'MSFT',      # Microsoft
-        'GOOGL',     # Google
-        'AMZN',      # Amazon
-        'TSLA',      # Tesla
-        'TATAMOTORS.NS',  # Tata Motors (Indian stock)
-        'RELIANCE.NS',    # Reliance (Indian stock)
-        'TCS.NS',         # TCS (Indian stock)
-    ]
-    
-    print("="*60)
-    print("Stock Price Prediction Model Training")
-    print("="*60)
-    print(f"\nThis script will train models for {len(tickers)} tickers.")
-    print("This may take a while depending on your system...")
+def train_all_models():
+    """Train models for all popular tickers."""
+    print("=" * 60)
+    print("Starting model training for all tickers")
+    print("=" * 60)
     
     successful = 0
     failed = 0
+    failed_tickers = []
     
-    for ticker in tickers:
+    for ticker in POPULAR_TICKERS:
         try:
-            if train_and_save_model(ticker):
-                successful += 1
-            else:
-                failed += 1
+            model, scaler, metadata = train_model(ticker)
+            save_model(ticker, model, scaler, metadata)
+            successful += 1
         except Exception as e:
-            print(f"Error training model for {ticker}: {str(e)}")
             failed += 1
+            failed_tickers.append((ticker, str(e)))
+            print(f"  ✗ Failed: {str(e)}")
     
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Training Summary")
-    print("="*60)
-    print(f"Successfully trained: {successful} models")
-    print(f"Failed: {failed} models")
-    print(f"Models saved in: {MODELS_DIR}/")
-    print("="*60)
+    print("=" * 60)
+    print(f"Successful: {successful}")
+    print(f"Failed: {failed}")
+    
+    if failed_tickers:
+        print("\nFailed tickers:")
+        for ticker, error in failed_tickers:
+            print(f"  - {ticker}: {error}")
+    
+    print(f"\nModels saved to: {os.path.abspath(MODELS_DIR)}/")
+    print("=" * 60)
+
+if __name__ == '__main__':
+    train_all_models()
 

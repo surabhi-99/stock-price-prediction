@@ -4,7 +4,8 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model, Sequential
+from tensorflow.keras.layers import LSTM, Dense
 import pickle
 from datetime import datetime, timedelta
 import os
@@ -74,15 +75,133 @@ def prepare_data(data, time_steps):
     
     return X, y
 
-def load_trained_model(ticker):
+def train_model_on_demand(ticker):
     """
-    Load a trained model from disk.
+    Train a model for a specific ticker on-demand.
     
     Args:
         ticker: Stock ticker symbol
     
     Returns:
-        tuple: (model, scaler, metadata) or None if not found
+        tuple: (model, scaler, metadata) or None if training fails
+    """
+    print(f"Training model on-demand for {ticker}...")
+    
+    try:
+        ticker_obj = yf.Ticker(ticker)
+        
+        # Try to get maximum available data
+        data = ticker_obj.history(period="10y")
+        
+        # If that didn't work well, try explicit date range
+        if data.empty or len(data) < 100:
+            end_date_obj = datetime.now()
+            start_date_obj = end_date_obj - timedelta(days=3650)  # 10 years
+            data = ticker_obj.history(start=start_date_obj.strftime('%Y-%m-%d'), 
+                                    end=end_date_obj.strftime('%Y-%m-%d'))
+        
+        # If still not enough, try max period
+        if data.empty or len(data) < 100:
+            data = ticker_obj.history(period="max")
+        
+        # Check if data is empty
+        if data.empty:
+            raise Exception(f"No data found for ticker {ticker}")
+        
+        # Check if Close column exists
+        if 'Close' not in data.columns:
+            raise Exception(f"No 'Close' price data found for {ticker}")
+        
+        # Get Close prices
+        prices = data['Close'].values.reshape(-1, 1)
+        
+        # Check for sufficient data
+        if len(prices) < 100:
+            raise Exception(f"Insufficient data for {ticker}. Got {len(prices)} data points, need at least 100.")
+        
+        print(f"  Downloaded {len(prices)} data points for {ticker}")
+        
+        # Create scaler
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        
+        # Normalize - use ALL data for fitting
+        scaled_prices = scaler.fit_transform(prices)
+        
+        # Prepare training data - use all available data
+        time_steps = 30
+        X_train, y_train = prepare_data(scaled_prices, time_steps)
+        
+        # Check if we have enough training data
+        if len(X_train) == 0:
+            raise Exception(f"Not enough training data after preparing sequences. Need more than {time_steps} data points.")
+        
+        print(f"  Prepared {len(X_train)} training sequences for {ticker}")
+        
+        # Build model
+        model = Sequential()
+        model.add(LSTM(units=50, return_sequences=True, input_shape=(time_steps, 1)))
+        model.add(LSTM(units=50))
+        model.add(Dense(units=1))
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        
+        # Train
+        print(f"  Training model for {ticker}...")
+        model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=0)
+        
+        # Create metadata
+        metadata = {
+            'ticker': ticker,
+            'data_points': len(prices),
+            'training_sequences': len(X_train),
+            'date_range': {
+                'start': data.index[0].strftime('%Y-%m-%d'),
+                'end': data.index[-1].strftime('%Y-%m-%d')
+            },
+            'trained_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'time_steps': time_steps
+        }
+        
+        # Save the model for future use
+        save_trained_model(ticker, model, scaler, metadata)
+        
+        print(f"  ✓ Model trained and saved for {ticker}")
+        
+        return model, scaler, metadata
+    except Exception as e:
+        print(f"Error training model for {ticker}: {str(e)}")
+        return None
+
+def save_trained_model(ticker, model, scaler, metadata):
+    """Save model, scaler, and metadata to files."""
+    # Create models directory if it doesn't exist
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    
+    # Sanitize ticker for filename (replace . with _)
+    safe_ticker = ticker.replace('.', '_')
+    
+    # Save Keras model
+    model_path = os.path.join(MODELS_DIR, f'{safe_ticker}_model.h5')
+    model.save(model_path)
+    
+    # Save scaler using pickle
+    scaler_path = os.path.join(MODELS_DIR, f'{safe_ticker}_scaler.pkl')
+    with open(scaler_path, 'wb') as f:
+        pickle.dump(scaler, f)
+    
+    # Save metadata using pickle
+    metadata_path = os.path.join(MODELS_DIR, f'{safe_ticker}_metadata.pkl')
+    with open(metadata_path, 'wb') as f:
+        pickle.dump(metadata, f)
+
+def load_trained_model(ticker):
+    """
+    Load a trained model from disk, or train it on-demand if not found.
+    
+    Args:
+        ticker: Stock ticker symbol
+    
+    Returns:
+        tuple: (model, scaler, metadata) or None if not found and training fails
     """
     # Check cache first
     if ticker in models_cache:
@@ -98,7 +217,15 @@ def load_trained_model(ticker):
     
     # Check if files exist
     if not os.path.exists(model_path) or not os.path.exists(scaler_path):
-        return None
+        # Model doesn't exist, train it on-demand
+        print(f"Model not found for {ticker}, training on-demand...")
+        model_data = train_model_on_demand(ticker)
+        if model_data is None:
+            return None
+        model, scaler, metadata = model_data
+        # Cache the newly trained model
+        models_cache[ticker] = (model, scaler, metadata)
+        return model, scaler, metadata
     
     try:
         # Load model
@@ -120,7 +247,15 @@ def load_trained_model(ticker):
         return model, scaler, metadata
     except Exception as e:
         print(f"Error loading model for {ticker}: {str(e)}")
-        return None
+        # If loading fails, try training on-demand
+        print(f"Attempting to train model on-demand for {ticker}...")
+        model_data = train_model_on_demand(ticker)
+        if model_data is None:
+            return None
+        model, scaler, metadata = model_data
+        # Cache the newly trained model
+        models_cache[ticker] = (model, scaler, metadata)
+        return model, scaler, metadata
 
 @app.route('/api/predict', methods=['POST', 'OPTIONS'])
 def predict():
@@ -146,12 +281,12 @@ def predict():
         else:
             is_future_prediction = True
         
-        # Load trained model from file
+        # Load trained model from file (or train on-demand if not found)
         model_data = load_trained_model(ticker)
         if model_data is None:
             return jsonify({
-                'error': f'No trained model found for ticker {ticker}. Please run train_models.py first to train models.'
-            }), 404
+                'error': f'Failed to load or train model for ticker {ticker}. Please check if the ticker symbol is valid and try again.'
+            }), 500
         
         model, scaler, metadata = model_data
         
@@ -186,7 +321,6 @@ def predict():
         eval_size = int(len(all_data) * 0.2)
         train_data = all_data[:-eval_size] if eval_size > 0 else all_data
         
-        # Get predictions on training data
         X_train_pred, y_train_actual = prepare_data(train_data, time_steps)
         if len(X_train_pred) > 0:
             train_predictions = model.predict(X_train_pred, verbose=0)
@@ -209,7 +343,6 @@ def predict():
             last_sequence = all_data[-time_steps:].reshape(1, time_steps, 1)
             
             # Generate predictions for future dates
-            
             predict_dates = pd.date_range(start=predict_start_date, end=predict_end_date, freq='B')  # Business days
             predicted_future = []
             
